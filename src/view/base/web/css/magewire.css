@@ -680,6 +680,10 @@
   margin-inline-end: calc(calc(var(--spacing) * 3) * calc(1 - var(--tw-space-x-reverse)));
 }
 
+[data-wire-cache] {
+  visibility: hidden;
+}
+
 @property --tw-rotate-x {
   syntax: "*";
   inherits: false

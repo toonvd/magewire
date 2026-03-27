@@ -50,7 +50,7 @@ $magewireFragment = $magewireViewModel->utils()->fragment();
                 }
 
                 const timeout = localStorage.getItem(TIMEOUT_KEY);
-
+                console.log(timeout && new Date(timeout) < new Date());
                 return timeout && new Date(timeout) < new Date();
             } catch {
                 return true;
@@ -86,20 +86,6 @@ $magewireFragment = $magewireViewModel->utils()->fragment();
                 .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
         };
 
-        const patchWireId = (outerHtml, wireId) => {
-            const temp = document.createElement('div');
-            temp.innerHTML = outerHtml;
-
-            const root = temp.firstElementChild;
-
-            if (root) {
-                root.setAttribute('wire:id', wireId);
-                return root.outerHTML;
-            }
-
-            return outerHtml;
-        };
-
         if (shouldClearCache()) {
             store.clear();
             try { localStorage.removeItem(SESSID_KEY); } catch {}
@@ -112,6 +98,7 @@ $magewireFragment = $magewireViewModel->utils()->fragment();
             const key = cacheKeyFor(el);
 
             if (!key) {
+                el.style.visibility = 'visible';
                 return;
             }
 
@@ -120,6 +107,8 @@ $magewireFragment = $magewireViewModel->utils()->fragment();
                     if (entry && entry.v !== CACHE_VERSION) {
                         store.clear();
                     }
+
+                    el.style.visibility = 'visible';
 
                     el.dispatchEvent(new CustomEvent('magewire:cache:miss', {
                         bubbles: true,
@@ -132,6 +121,8 @@ $magewireFragment = $magewireViewModel->utils()->fragment();
                 try {
                     component.mergeNewSnapshot(entry.snapshot, component.effects);
                 } catch {
+                    el.style.visibility = 'visible';
+
                     el.dispatchEvent(new CustomEvent('magewire:cache:miss', {
                         bubbles: true,
                         detail: { key }
@@ -140,9 +131,16 @@ $magewireFragment = $magewireViewModel->utils()->fragment();
                     return;
                 }
 
-                const html = patchWireId(sanitiseHtml(entry.html), component.id);
+                const clean = sanitiseHtml(entry.html);
+                const temp = document.createElement('div');
+                temp.innerHTML = clean;
+                const cached = temp.firstElementChild;
 
-                component.processEffects({ html });
+                if (cached) {
+                    el.innerHTML = cached.innerHTML;
+                }
+
+                el.style.visibility = 'visible';
 
                 el.dispatchEvent(new CustomEvent('magewire:cache:hit', {
                     bubbles: true,
@@ -162,6 +160,10 @@ $magewireFragment = $magewireViewModel->utils()->fragment();
         });
 
         Magewire.hook('morphed', ({ component }) => {
+            if (component.el.hasAttribute('data-wire-cache')) {
+                component.el.style.visibility = 'visible';
+            }
+
             const key = pendingWrites[component.id];
 
             if (!key) {
